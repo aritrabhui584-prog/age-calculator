@@ -102,5 +102,54 @@ class TestAgeCalculator(unittest.TestCase):
         self.assertEqual(next_bday.month, 3)
         self.assertEqual(next_bday.day, 1)
 
+    def test_day_of_birth(self):
+        """Test weekday name determination."""
+        born = date(2000, 1, 1)  # January 1, 2000 was Saturday
+        self.assertEqual(AgeCalculator.get_day_of_birth(born), "Saturday")
+        born_dt = datetime(1995, 5, 15, 14, 30)  # May 15, 1995 was Monday
+        self.assertEqual(AgeCalculator.get_day_of_birth(born_dt), "Monday")
+
+    def test_zodiac_sign(self):
+        """Test Western Zodiac boundaries and element mapping."""
+        # Aries
+        self.assertEqual(AgeCalculator.get_zodiac_sign(date(2000, 3, 21))["sign"], "Aries")
+        self.assertEqual(AgeCalculator.get_zodiac_sign(date(2000, 4, 19))["sign"], "Aries")
+        # Taurus
+        self.assertEqual(AgeCalculator.get_zodiac_sign(date(2000, 4, 20))["sign"], "Taurus")
+        self.assertEqual(AgeCalculator.get_zodiac_sign(date(2000, 5, 20))["sign"], "Taurus")
+        # Capricorn (spanning year end)
+        self.assertEqual(AgeCalculator.get_zodiac_sign(date(2000, 12, 22))["sign"], "Capricorn")
+        self.assertEqual(AgeCalculator.get_zodiac_sign(date(2000, 1, 19))["sign"], "Capricorn")
+        # Aquarius
+        self.assertEqual(AgeCalculator.get_zodiac_sign(date(2000, 1, 20))["sign"], "Aquarius")
+
+    def test_chinese_zodiac(self):
+        """Test Chinese Zodiac 12-year animal cycle."""
+        self.assertEqual(AgeCalculator.get_chinese_zodiac(date(2000, 1, 1))["animal"], "Dragon")
+        self.assertEqual(AgeCalculator.get_chinese_zodiac(date(1995, 5, 15))["animal"], "Pig")
+        self.assertEqual(AgeCalculator.get_chinese_zodiac(date(2024, 2, 10))["animal"], "Dragon")
+        self.assertEqual(AgeCalculator.get_chinese_zodiac(date(1984, 1, 1))["animal"], "Rat")
+
+    def test_life_milestones(self):
+        """Test milestone generation, date calculation, and reached status."""
+        born = datetime(2000, 1, 1, 0, 0, 0)
+        target = datetime(2020, 1, 1, 0, 0, 0)
+        
+        milestones = AgeCalculator.get_life_milestones(born, target)
+        self.assertGreater(len(milestones), 5)
+
+        # 1,000 Days should be reached by 2020
+        m_1000 = next(m for m in milestones if m["title"] == "1,000 Days")
+        self.assertTrue(m_1000["reached"])
+
+        # Age 18 should be reached by 2020
+        m_18 = next(m for m in milestones if m["title"] == "Age 18")
+        self.assertTrue(m_18["reached"])
+
+        # Age 30 should not be reached by 2020
+        m_30 = next(m for m in milestones if m["title"] == "Age 30")
+        self.assertFalse(m_30["reached"])
+        self.assertEqual(m_30["date"].year, 2030)
+
 if __name__ == "__main__":
     unittest.main()

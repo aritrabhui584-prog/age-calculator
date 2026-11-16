@@ -212,7 +212,21 @@ class AgeCalculatorGUI:
             lbl = ttk.Label(self.stats_grid, text=label_text, style="CardSub.TLabel", font=("Segoe UI", 10, "bold"))
             lbl.grid(row=idx, column=0, sticky="w", pady=4)
             val = ttk.Label(self.stats_grid, text="-", style="CardSub.TLabel", foreground=FG_TEXT, font=("Segoe UI", 10, "bold"))
-            val.grid(row=idx, column=1, sticky="w", padx=30, pady=4)
+            val.grid(row=idx, column=1, sticky="w", padx=(15, 25), pady=4)
+            self.stat_labels[key] = val
+
+        # Astrological & Milestone insights
+        extra_metrics = [
+            ("born_day", "Born Weekday"),
+            ("zodiac", "Zodiac Sign"),
+            ("chinese", "Chinese Zodiac"),
+            ("milestone", "Next Milestone")
+        ]
+        for idx, (key, label_text) in enumerate(extra_metrics):
+            lbl = ttk.Label(self.stats_grid, text=label_text, style="CardSub.TLabel", font=("Segoe UI", 10, "bold"))
+            lbl.grid(row=idx, column=2, sticky="w", pady=4)
+            val = ttk.Label(self.stats_grid, text="-", style="CardSub.TLabel", foreground=FG_TEXT, font=("Segoe UI", 10, "bold"))
+            val.grid(row=idx, column=3, sticky="w", padx=(15, 0), pady=4)
             self.stat_labels[key] = val
 
     def draw_divider(self, parent, pady):
@@ -366,11 +380,25 @@ class AgeCalculatorGUI:
 
             # 3. Detailed stats
             stats = AgeCalculator.calculate_time_breakdown(dob, target)
-            self.stat_labels["weeks"].configure(text=f"{stats['weeks']:,} weeks")
+            self.stat_labels["weeks"].configure(text=f"{stats['weeks']:,} wks")
             self.stat_labels["days"].configure(text=f"{stats['days']:,} days")
-            self.stat_labels["hours"].configure(text=f"{stats['hours']:,} hours")
-            self.stat_labels["minutes"].configure(text=f"{stats['minutes']:,} minutes")
-            self.stat_labels["seconds"].configure(text=f"{stats['seconds']:,} seconds")
+            self.stat_labels["hours"].configure(text=f"{stats['hours']:,} hrs")
+            self.stat_labels["minutes"].configure(text=f"{stats['minutes']:,} mins")
+            self.stat_labels["seconds"].configure(text=f"{stats['seconds']:,} secs")
+
+            # 4. Astrological & Milestone insights
+            zodiac = AgeCalculator.get_zodiac_sign(dob)
+            chinese = AgeCalculator.get_chinese_zodiac(dob)
+            self.stat_labels["born_day"].configure(text=AgeCalculator.get_day_of_birth(dob))
+            self.stat_labels["zodiac"].configure(text=f"{zodiac['sign']} {zodiac['symbol']}")
+            self.stat_labels["chinese"].configure(text=f"{chinese['animal']} {chinese['emoji']}")
+
+            milestones = AgeCalculator.get_life_milestones(dob, target)
+            upcoming = next((m for m in milestones if not m["reached"]), None)
+            if upcoming:
+                self.stat_labels["milestone"].configure(text=f"{upcoming['title']} (in {upcoming['days_diff']}d)")
+            else:
+                self.stat_labels["milestone"].configure(text="All achieved")
 
         except ValueError as e:
             # Fallback if any error occurs
