@@ -1,4 +1,5 @@
 import sys
+import json
 import argparse
 from datetime import datetime
 from calculator import AgeCalculator
@@ -49,6 +50,44 @@ def print_detailed_breakdown(breakdown: dict):
     print(f"  - Total Seconds : {C_BOLD}{C_GREEN}{breakdown['seconds']:,} seconds{C_RESET}")
     print(f"{C_YELLOW}-------------------------------------------------{C_RESET}\n")
 
+def get_json_output(dob: datetime, target: datetime) -> str:
+    """Returns all calculation results formatted as a clean JSON string."""
+    exact = AgeCalculator.calculate_exact_age(dob, target)
+    breakdown = AgeCalculator.calculate_time_breakdown(dob, target)
+    next_bday, time_left = AgeCalculator.get_next_birthday(dob, target)
+    zodiac = AgeCalculator.get_zodiac_sign(dob)
+    chinese_zodiac = AgeCalculator.get_chinese_zodiac(dob)
+    day_of_birth = AgeCalculator.get_day_of_birth(dob)
+    milestones = AgeCalculator.get_life_milestones(dob, target)
+
+    data = {
+        "birth_date": dob.isoformat(),
+        "target_date": target.isoformat(),
+        "day_of_birth": day_of_birth,
+        "exact_age": exact,
+        "time_breakdown": breakdown,
+        "next_birthday": {
+            "date": next_bday.strftime("%Y-%m-%d %H:%M:%S"),
+            "day_of_week": next_bday.strftime("%A"),
+            "days_remaining": time_left.days,
+            "seconds_remaining": time_left.seconds
+        },
+        "astrology": {
+            "western_zodiac": zodiac,
+            "chinese_zodiac": chinese_zodiac
+        },
+        "milestones": [
+            {
+                "title": m["title"],
+                "date": m["date"].strftime("%Y-%m-%d"),
+                "reached": m["reached"],
+                "days_diff": m["days_diff"]
+            }
+            for m in milestones
+        ]
+    }
+    return json.dumps(data, indent=2)
+
 def run_interactive():
     """Prompts the user interactively in the console."""
     print_banner()
@@ -90,14 +129,23 @@ def display_results(dob: datetime, target: datetime):
         )
         print_result_card("EXACT AGE", age_str, C_CYAN)
 
-        # 2. Detailed Breakdown
+        # 2. Astrological & Birth Profile
+        day_of_birth = AgeCalculator.get_day_of_birth(dob)
+        zodiac = AgeCalculator.get_zodiac_sign(dob)
+        chinese = AgeCalculator.get_chinese_zodiac(dob)
+        astro_str = (
+            f"Born On   : {day_of_birth}\n"
+            f"Zodiac    : {zodiac['sign']} {zodiac['symbol']} ({zodiac['element']} Element)\n"
+            f"Chinese   : Year of the {chinese['animal']} {chinese['emoji']}"
+        )
+        print_result_card("BIRTH PROFILE & ZODIAC", astro_str, C_BLUE)
+
+        # 3. Detailed Breakdown
         breakdown = AgeCalculator.calculate_time_breakdown(dob, target)
         print_detailed_breakdown(breakdown)
 
-        # 3. Next Birthday Countdown
+        # 4. Next Birthday Countdown
         next_bday, time_left = AgeCalculator.get_next_birthday(dob, target)
-        
-        # Calculate days, hours, mins, secs remaining
         days_left = time_left.days
         hours_left = time_left.seconds // 3600
         mins_left = (time_left.seconds % 3600) // 60
@@ -112,6 +160,18 @@ def display_results(dob: datetime, target: datetime):
             f"Date       : {formatted_date}"
         )
         print_result_card("NEXT BIRTHDAY COUNTDOWN", countdown_str, C_MAGENTA)
+
+        # 5. Upcoming Milestone
+        milestones = AgeCalculator.get_life_milestones(dob, target)
+        upcoming = next((m for m in milestones if not m["reached"]), None)
+        if upcoming:
+            m_date_str = upcoming["date"].strftime("%d %B %Y")
+            milestone_str = (
+                f"Next Goal : {upcoming['title']}\n"
+                f"Date      : {m_date_str}\n"
+                f"Remaining : In {upcoming['days_diff']} Days"
+            )
+            print_result_card("UPCOMING MILESTONE", milestone_str, C_GREEN)
         
     except ValueError as e:
         print(f"{C_RED}Error during calculation: {e}{C_RESET}")
@@ -134,23 +194,37 @@ def main():
         action="store_true", 
         help="Force interactive CLI mode."
     )
+    parser.add_argument(
+        "--json", 
+        action="store_true", 
+        help="Output calculation results in machine-readable JSON format."
+    )
 
     args = parser.parse_args()
 
     # Determine whether to run interactive or argument-based
-    if args.interactive or (not args.dob):
+    if args.interactive or (not args.dob and not args.json):
         run_interactive()
     else:
+        if not args.dob:
+            print(f"{C_RED}Error: --dob is required when not in interactive mode.{C_RESET}")
+            sys.exit(1)
+
         try:
             dob = parse_date(args.dob)
             target = parse_date(args.target) if args.target else datetime.now()
-            print_banner()
-            print(f" DOB   : {C_BOLD}{C_GREEN}{dob.strftime('%Y-%m-%d %H:%M:%S')}{C_RESET}")
-            print(f" Target: {C_BOLD}{C_GREEN}{target.strftime('%Y-%m-%d %H:%M:%S')}{C_RESET}\n")
-            display_results(dob, target)
+
+            if args.json:
+                print(get_json_output(dob, target))
+            else:
+                print_banner()
+                print(f" DOB   : {C_BOLD}{C_GREEN}{dob.strftime('%Y-%m-%d %H:%M:%S')}{C_RESET}")
+                print(f" Target: {C_BOLD}{C_GREEN}{target.strftime('%Y-%m-%d %H:%M:%S')}{C_RESET}\n")
+                display_results(dob, target)
         except ValueError as e:
             print(f"{C_RED}Error: {e}{C_RESET}")
             sys.exit(1)
 
 if __name__ == "__main__":
     main()
+

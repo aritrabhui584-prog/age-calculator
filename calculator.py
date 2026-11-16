@@ -1,6 +1,6 @@
 import calendar
 from datetime import datetime, date, timedelta
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, List, Union
 
 class AgeCalculator:
     """Core calculation logic for precise age calculation."""
@@ -156,3 +156,116 @@ class AgeCalculator:
 
         duration = next_bday - target
         return next_bday, duration
+
+    @staticmethod
+    def get_day_of_birth(born: Union[datetime, date]) -> str:
+        """Returns the weekday name of birth (e.g. 'Monday', 'Friday')."""
+        return born.strftime("%A")
+
+    @staticmethod
+    def get_zodiac_sign(born: Union[datetime, date]) -> Dict[str, str]:
+        """
+        Calculates the Western Zodiac sign, astrological symbol, and classical element.
+        
+        Args:
+            born: datetime or date object.
+            
+        Returns:
+            Dict containing 'sign', 'symbol', and 'element'.
+        """
+        month = born.month
+        day = born.day
+
+        # Zodiac date ranges: (end_month, end_day, sign, symbol, element)
+        zodiac_dates = [
+            ((1, 20), (2, 18), "Aquarius", "♒", "Air"),
+            ((2, 19), (3, 20), "Pisces", "♓", "Water"),
+            ((3, 21), (4, 19), "Aries", "♈", "Fire"),
+            ((4, 20), (5, 20), "Taurus", "♉", "Earth"),
+            ((5, 21), (6, 20), "Gemini", "♊", "Air"),
+            ((6, 21), (7, 22), "Cancer", "♋", "Water"),
+            ((7, 23), (8, 22), "Leo", "♌", "Fire"),
+            ((8, 23), (9, 22), "Virgo", "♍", "Earth"),
+            ((9, 23), (10, 22), "Libra", "♎", "Air"),
+            ((10, 23), (11, 21), "Scorpio", "♏", "Water"),
+            ((11, 22), (12, 21), "Sagittarius", "♐", "Fire"),
+        ]
+
+        for (start_m, start_d), (end_m, end_d), sign, symbol, element in zodiac_dates:
+            if (month == start_m and day >= start_d) or (month == end_m and day <= end_d):
+                return {"sign": sign, "symbol": symbol, "element": element}
+
+        # Capricorn spans December 22 to January 19
+        return {"sign": "Capricorn", "symbol": "♑", "element": "Earth"}
+
+    @staticmethod
+    def get_chinese_zodiac(born: Union[datetime, date]) -> Dict[str, str]:
+        """
+        Calculates Chinese Zodiac animal and emoji based on birth year.
+        
+        Args:
+            born: datetime or date object.
+            
+        Returns:
+            Dict containing 'animal' and 'emoji'.
+        """
+        animals = [
+            ("Rat", "🐀"), ("Ox", "🐂"), ("Tiger", "🐅"), ("Rabbit", "🐇"),
+            ("Dragon", "🐉"), ("Snake", "🐍"), ("Horse", "🐎"), ("Goat", "🐐"),
+            ("Monkey", "🐒"), ("Rooster", "🐓"), ("Dog", "🐕"), ("Pig", "🐖")
+        ]
+        # Reference: Year 4 AD was year of the Rat
+        idx = (born.year - 4) % 12
+        animal, emoji = animals[idx]
+        return {"animal": animal, "emoji": emoji}
+
+    @classmethod
+    def get_life_milestones(cls, born: datetime, target: datetime) -> List[Dict[str, Any]]:
+        """
+        Calculates notable life milestone moments (e.g. 10,000 days, 1 billion seconds, key ages).
+        
+        Args:
+            born: datetime object of birth date/time.
+            target: datetime object of target date/time.
+            
+        Returns:
+            List of milestone dictionaries sorted chronologically.
+        """
+        milestones = []
+
+        # Day milestones
+        for day_count in [1000, 5000, 10000, 15000, 20000, 25000]:
+            m_date = born + timedelta(days=day_count)
+            milestones.append({
+                "title": f"{day_count:,} Days",
+                "date": m_date,
+                "reached": target >= m_date,
+                "days_diff": abs((target - m_date).days)
+            })
+
+        # Second milestones (1 Billion seconds ~ 31.7 years)
+        one_billion_sec = born + timedelta(seconds=1_000_000_000)
+        milestones.append({
+            "title": "1 Billion Seconds",
+            "date": one_billion_sec,
+            "reached": target >= one_billion_sec,
+            "days_diff": abs((target - one_billion_sec).days)
+        })
+
+        # Year milestones (18, 21, 30, 40, 50, 60, 75, 100)
+        for year in [18, 21, 30, 40, 50, 60, 75, 100]:
+            try:
+                m_date = datetime(born.year + year, born.month, born.day, born.hour, born.minute, born.second)
+            except ValueError:
+                # Feb 29 fallback
+                m_date = datetime(born.year + year, 3, 1, born.hour, born.minute, born.second)
+            milestones.append({
+                "title": f"Age {year}",
+                "date": m_date,
+                "reached": target >= m_date,
+                "days_diff": abs((target - m_date).days)
+            })
+
+        milestones.sort(key=lambda m: m["date"])
+        return milestones
+
